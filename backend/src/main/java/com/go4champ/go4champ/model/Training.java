@@ -27,7 +27,7 @@ public class Training {
 
     private int duration;
 
-    //  Define targetGroup field once the requirement is clarified
+    // TODO: Define targetGroup field once the requirement is clarified
 
     public Training() {
     }

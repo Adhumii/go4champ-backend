@@ -36,6 +36,7 @@ public class Go4ChampApplication {
 				testUser.setUsername("testuser");
 				testUser.setPassword("testpassword"); // KLARTEXT! UserService verschlüsselt es
 				testUser.setName("Test User");
+				testUser.setEmailVerified(true);
 				testUser.setAge(25);
 				testUser.setWeight(75);
 				testUser.setHeight(180);

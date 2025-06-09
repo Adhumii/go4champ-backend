@@ -47,20 +47,20 @@ public class EmailTestService {
             message.setFrom(fromEmail);
 
             mailSender.send(message);
-            logger.info(" E-MAIL ERFOLGREICH VERSENDET!");
+            logger.info("✅ E-MAIL ERFOLGREICH VERSENDET!");
 
         } catch (Exception e) {
-            logger.error(" E-MAIL FEHLER: {}", e.getMessage());
-            logger.error(" FEHLER TYP: {}", e.getClass().getSimpleName());
+            logger.error("❌ E-MAIL FEHLER: {}", e.getMessage());
+            logger.error("❌ FEHLER TYP: {}", e.getClass().getSimpleName());
 
             if (e.getMessage().contains("Authentication")) {
-                logger.error(" AUTHENTIFIZIERUNG FEHLGESCHLAGEN!");
+                logger.error("🔐 AUTHENTIFIZIERUNG FEHLGESCHLAGEN!");
                 logger.error("   → Prüfe App-Passwort");
                 logger.error("   → Prüfe Gmail-Account");
             }
 
             if (e.getMessage().contains("Connection")) {
-                logger.error(" VERBINDUNGSPROBLEM!");
+                logger.error("🌐 VERBINDUNGSPROBLEM!");
                 logger.error("   → Prüfe Internet");
                 logger.error("   → Prüfe Firewall");
             }

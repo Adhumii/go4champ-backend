@@ -1,4 +1,4 @@
-// Speichern unter: src/main/java/com/go4champ/go4champ/dto/PasswordResetRequest.java
+
 
 package com.go4champ.go4champ.dto;
 

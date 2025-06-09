@@ -125,4 +125,30 @@ public class UserController {
         }
     }
 
+    @Operation(summary = "Holt alle Trainingspläne des eingeloggten Users")
+    @GetMapping("/me/training-plans")
+    public ResponseEntity<?> getMyTrainingPlans(@RequestHeader("Authorization") String authHeader) {
+        try {
+            // JWT Token aus Header extrahieren
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kein gültiger Token");
+            }
+
+            String token = authHeader.substring(7);
+            String username = jwtUtil.getUsernameFromToken(token);
+
+            // User und seine Trainingspläne holen
+            User user = service.getUserById(username);
+            if (user != null) {
+                return ResponseEntity.ok(user.getTrainingPlans());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("User nicht gefunden");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Fehler beim Abrufen der Trainingspläne: " + e.getMessage());
+        }
+    }
+
 }

@@ -47,6 +47,14 @@ public class User {
     )
     private List<Training> trainings = new ArrayList<>();
 
+    // NEU: TrainingsPlan-Beziehung
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<TrainingsPlan> trainingPlans = new ArrayList<>();
+
     private String avatarID;
 
     //leerer Konstruktor für Hibernate
@@ -125,6 +133,25 @@ public class User {
     public void removeTraining(Training training) {
         trainings.remove(training);
         training.setUser(null);
+    }
+
+    // NEU: TrainingsPlan Getter und Setter
+    public List<TrainingsPlan> getTrainingPlans() {
+        return trainingPlans;
+    }
+
+    public void setTrainingPlans(List<TrainingsPlan> trainingPlans) {
+        this.trainingPlans = trainingPlans;
+    }
+
+    public void addTrainingPlan(TrainingsPlan trainingPlan) {
+        trainingPlans.add(trainingPlan);
+        trainingPlan.setUser(this);
+    }
+
+    public void removeTrainingPlan(TrainingsPlan trainingPlan) {
+        trainingPlans.remove(trainingPlan);
+        trainingPlan.setUser(null);
     }
 
     public String getUsername() {
