@@ -36,6 +36,12 @@ public class User {
 
     private int weightGoal;
 
+    // NEU: Equipment Liste
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_equipment", joinColumns = @JoinColumn(name = "username"))
+    @Column(name = "equipment")
+    private List<String> availableEquipment = new ArrayList<>();
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "game_id")
     private Game game;
@@ -88,6 +94,55 @@ public class User {
         this.weight = weight;
         this.weightGoal = weightGoal;
         this.avatarID = avatarID;
+    }
+
+    // NEU: Equipment Getter und Setter
+    public List<String> getAvailableEquipment() {
+        return availableEquipment;
+    }
+
+    public void setAvailableEquipment(List<String> availableEquipment) {
+        this.availableEquipment = availableEquipment;
+    }
+
+    // NEU: Equipment Helper Methoden
+    public void addEquipment(String equipment) {
+        if (!availableEquipment.contains(equipment)) {
+            availableEquipment.add(equipment);
+        }
+    }
+
+    public void removeEquipment(String equipment) {
+        availableEquipment.remove(equipment);
+    }
+
+    public boolean hasEquipment(String equipment) {
+        return availableEquipment.contains(equipment);
+    }
+
+    // NEU: Equipment Check Methoden für spezielle Geräte
+    public boolean hasJumpRope() {
+        return hasEquipment("JUMP_ROPE");
+    }
+
+    public boolean hasPullUpBar() {
+        return hasEquipment("PULL_UP_BAR");
+    }
+
+    public boolean hasKettlebell() {
+        return hasEquipment("KETTLEBELL");
+    }
+
+    public boolean hasResistanceBand() {
+        return hasEquipment("RESISTANCE_BAND");
+    }
+
+    public boolean hasDumbbells() {
+        return hasEquipment("DUMBBELLS");
+    }
+
+    public boolean hasMat() {
+        return hasEquipment("MAT");
     }
 
     public List<String> getRoles() {
@@ -263,6 +318,7 @@ public class User {
                 ", gender=" + gender +
                 ", weight=" + weight +
                 ", weightGoal=" + weightGoal +
+                ", availableEquipment=" + availableEquipment +
                 ", avatarID='" + avatarID + '\'' +
                 '}';
     }
