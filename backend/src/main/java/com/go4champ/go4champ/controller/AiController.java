@@ -189,7 +189,7 @@ public class AiController {
 
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
-            headers.set("x-api-key", "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"); // ← Claude API Key
+            headers.set("x-api-key", "ApiKey"); // ← Claude API Key
             headers.set("anthropic-version", "2023-06-01");
             headers.setContentType(MediaType.APPLICATION_JSON);
 
