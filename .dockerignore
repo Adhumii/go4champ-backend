@@ -1,4 +1,3 @@
-backend/
 target/
 .git/
 .gitignore
@@ -8,5 +7,5 @@ node_modules/
 .idea/
 .vscode/
 *.tmp
-*.swp
+.swp
 .env
