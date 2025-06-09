@@ -1,0 +1,23 @@
+body {
+  font-family: Arial, sans-serif;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 20px;
+  background: hsl(205, 46%, 85%);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+input {
+  margin: 10px 0;
+  padding: 5px;
+}
+
+.error {
+  color: red;
+}
+
+/*# sourceMappingURL=register.css.map */

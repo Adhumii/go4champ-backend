@@ -1,0 +1,10 @@
+@use "variables";
+
+//for the body of each site
+@mixin body{
+    font-family: variables.$font;
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 20px;
+    background: variables.$color-primary;
+}

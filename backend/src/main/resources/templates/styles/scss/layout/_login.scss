@@ -1,0 +1,19 @@
+@use "foundation/variables";
+@use "foundation/mixin";
+
+body {
+   @include mixin.body;
+}
+
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+input {
+    margin: 10px 0;
+    padding: 5px;
+}
+.error {
+    color: red;
+}

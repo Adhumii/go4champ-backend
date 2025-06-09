@@ -1,0 +1,12 @@
+backend/
+target/
+.git/
+.gitignore
+node_modules/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.tmp
+*.swp
+.env
