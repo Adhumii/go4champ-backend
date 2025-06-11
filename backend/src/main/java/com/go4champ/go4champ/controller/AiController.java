@@ -37,7 +37,7 @@ public class AiController {
     private String callCloudAI(String prompt) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-api-key", "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");
+        headers.set("x-api-key", System.getenv("ANTHROPIC_API_KEY"));
         headers.set("anthropic-version", "2023-06-01");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
