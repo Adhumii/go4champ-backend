@@ -5,6 +5,7 @@ import com.go4champ.go4champ.controller.TrainingController;
 import com.go4champ.go4champ.controller.TrainingsPlanController;
 import com.go4champ.go4champ.model.TrainingsPlan;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "\"training\"")
@@ -35,6 +36,15 @@ public class Training {
 
     private int duration;
 
+    // NEU: Datums-Felder für Ranking System
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
 
     @Transient
     private String typeString;
@@ -65,6 +75,11 @@ public class Training {
     public Training(String title, TrainingsPlan trainingsPlan) {
         this.title = title;
         this.trainingsPlan = trainingsPlan;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -132,4 +147,41 @@ public class Training {
         this.user = user;
     }
 
+    // NEU: Datums-Getter und Setter
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public LocalDateTime getStartedAt() {
+        return startedAt;
+    }
+
+    public void setStartedAt(LocalDateTime startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    // NEU: Helper-Methoden
+    public boolean isCompleted() {
+        return completedAt != null;
+    }
+
+    public void markAsCompleted() {
+        this.completedAt = LocalDateTime.now();
+    }
+
+    public void markAsStarted() {
+        this.startedAt = LocalDateTime.now();
+    }
 }
