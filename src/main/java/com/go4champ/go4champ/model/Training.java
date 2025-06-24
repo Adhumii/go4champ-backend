@@ -2,8 +2,6 @@ package com.go4champ.go4champ.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.go4champ.go4champ.controller.TrainingController;
-import com.go4champ.go4champ.controller.TrainingsPlanController;
-import com.go4champ.go4champ.model.TrainingsPlan;
 import jakarta.persistence.*;
 
 @Entity

@@ -1,7 +1,6 @@
 package com.go4champ.go4champ.model;
 
 import jakarta.persistence.*;
-import org.springframework.context.annotation.Primary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +35,12 @@ public class User {
 
     private int weightGoal;
 
+    // NEU: Equipment Liste
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_equipment", joinColumns = @JoinColumn(name = "username"))
+    @Column(name = "equipment")
+    private List<String> availableEquipment = new ArrayList<>();
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "game_id")
     private Game game;
@@ -46,6 +51,14 @@ public class User {
             orphanRemoval = true
     )
     private List<Training> trainings = new ArrayList<>();
+
+    // NEU: TrainingsPlan-Beziehung
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<TrainingsPlan> trainingPlans = new ArrayList<>();
 
     private String avatarID;
 
@@ -80,6 +93,55 @@ public class User {
         this.weight = weight;
         this.weightGoal = weightGoal;
         this.avatarID = avatarID;
+    }
+
+    // NEU: Equipment Getter und Setter
+    public List<String> getAvailableEquipment() {
+        return availableEquipment;
+    }
+
+    public void setAvailableEquipment(List<String> availableEquipment) {
+        this.availableEquipment = availableEquipment;
+    }
+
+    // NEU: Equipment Helper Methoden
+    public void addEquipment(String equipment) {
+        if (!availableEquipment.contains(equipment)) {
+            availableEquipment.add(equipment);
+        }
+    }
+
+    public void removeEquipment(String equipment) {
+        availableEquipment.remove(equipment);
+    }
+
+    public boolean hasEquipment(String equipment) {
+        return availableEquipment.contains(equipment);
+    }
+
+    // NEU: Equipment Check Methoden für spezielle Geräte
+    public boolean hasJumpRope() {
+        return hasEquipment("JUMP_ROPE");
+    }
+
+    public boolean hasPullUpBar() {
+        return hasEquipment("PULL_UP_BAR");
+    }
+
+    public boolean hasKettlebell() {
+        return hasEquipment("KETTLEBELL");
+    }
+
+    public boolean hasResistanceBand() {
+        return hasEquipment("RESISTANCE_BAND");
+    }
+
+    public boolean hasDumbbells() {
+        return hasEquipment("DUMBBELLS");
+    }
+
+    public boolean hasMat() {
+        return hasEquipment("MAT");
     }
 
     public List<String> getRoles() {
@@ -125,6 +187,25 @@ public class User {
     public void removeTraining(Training training) {
         trainings.remove(training);
         training.setUser(null);
+    }
+
+    // NEU: TrainingsPlan Getter und Setter
+    public List<TrainingsPlan> getTrainingPlans() {
+        return trainingPlans;
+    }
+
+    public void setTrainingPlans(List<TrainingsPlan> trainingPlans) {
+        this.trainingPlans = trainingPlans;
+    }
+
+    public void addTrainingPlan(TrainingsPlan trainingPlan) {
+        trainingPlans.add(trainingPlan);
+        trainingPlan.setUser(this);
+    }
+
+    public void removeTrainingPlan(TrainingsPlan trainingPlan) {
+        trainingPlans.remove(trainingPlan);
+        trainingPlan.setUser(null);
     }
 
     public String getUsername() {
@@ -236,6 +317,7 @@ public class User {
                 ", gender=" + gender +
                 ", weight=" + weight +
                 ", weightGoal=" + weightGoal +
+                ", availableEquipment=" + availableEquipment +
                 ", avatarID='" + avatarID + '\'' +
                 '}';
     }

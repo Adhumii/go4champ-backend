@@ -44,10 +44,9 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
-                        .disable()
+                        .frameOptions().disable()
                 );
 
         return http.build();
     }
-
 }

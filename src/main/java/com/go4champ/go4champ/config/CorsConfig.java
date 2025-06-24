@@ -14,7 +14,9 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**") // Erlaubt alle Pfade
-                        .allowedOrigins("http://localhost:5173") // Dein Vite-Frontend
+                        .allowedOrigins("http://localhost:5173","https://go4champ-frontend.onrender.com") // Dein Vite-Frontend
+
+
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
