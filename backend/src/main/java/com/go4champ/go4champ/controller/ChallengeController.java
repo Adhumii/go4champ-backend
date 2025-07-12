@@ -22,9 +22,7 @@ public class ChallengeController {
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
 
-    /**
-     * Neue Challenge erstellen
-     */
+
     @PostMapping
     public ResponseEntity<?> createChallenge(
             @RequestHeader("Authorization") String token,

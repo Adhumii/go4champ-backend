@@ -42,10 +42,6 @@ public class User {
     @Column(name = "equipment")
     private List<String> availableEquipment = new ArrayList<>();
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "game_id")
-    private Game game;
-
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -157,24 +153,7 @@ public class User {
         this.height = height;
     }
 
-    public Game getGame() {
-        return game;
-    }
 
-    public void setGame(Game game) {
-        // Alte Beziehung entfernen
-        if (this.game != null) {
-            this.game.setUser(null);
-        }
-
-        // Neue Beziehung setzen
-        this.game = game;
-
-        // Rückreferenz setzen
-        if (game != null && game.getUser() != this) {
-            game.setUser(this);
-        }
-    }
 
     public List<Training> getTrainings() {
         return trainings;
