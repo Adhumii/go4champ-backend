@@ -123,7 +123,7 @@ public interface TrainingRepo extends JpaRepository<Training, Integer> {
     Long countByUsernameForDate(@Param("username") String username, @Param("date") LocalDate date);
 
     /**
-     * Findet alle Trainings sortiert nach Datum (für Streak-Berechnung)
+     * FIXED: Findet alle Trainings eines Users sortiert nach Datum (für Streak-Berechnung)
      */
     @Query("SELECT t FROM Training t WHERE t.user.username = :username ORDER BY t.createdAt DESC")
     List<Training> findByUsernameOrderByDateDesc(@Param("username") String username);
@@ -214,9 +214,6 @@ public interface TrainingRepo extends JpaRepository<Training, Integer> {
      */
     List<Training> findTop10ByUserUsernameOrderByCreatedAtDesc(String username);
 
-    /**
-     * ALTERNATIVE: Findet alle Trainings-Daten eines Users (für Streak-Berechnung)
-     */
-    @Query("SELECT DISTINCT FUNCTION('DATE', t.createdAt) FROM Training t WHERE t.user.username = :username ORDER BY FUNCTION('DATE', t.createdAt) DESC")
-    List<LocalDate> findDistinctTrainingDatesByUsername(@Param("username") String username);
+    // REMOVED: Die problematische findDistinctTrainingDatesByUsername Methode wurde entfernt
+    // REPLACED BY: findByUsernameOrderByDateDesc() für bessere Streak-Berechnung
 }

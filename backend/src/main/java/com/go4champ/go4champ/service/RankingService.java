@@ -29,11 +29,11 @@ public class RankingService {
     private ChallengeRepository challengeRepository;
 
     // =============================================================================
-    // USER STATS BERECHNUNG
+    // USER STATS BERECHNUNG - EMERGENCY FIX (NO INFINITE LOOP)
     // =============================================================================
 
     /**
-     * Berechnet alle Statistiken für einen User
+     * EMERGENCY FIX: Berechnet alle Statistiken für einen User (OHNE Ranking Positions!)
      */
     public UserStats calculateUserStats(String username) {
         User user = userRepository.findByUsername(username)
@@ -85,21 +85,144 @@ public class RankingService {
         }
 
         // Tage mit Aktivität
-        List<LocalDate> activeDays = trainingRepo.findDistinctTrainingDatesByUsername(username);
+        List<LocalDate> activeDays = getDistinctTrainingDates(username);
         stats.setDaysActive(activeDays.size());
+
+        // EMERGENCY FIX: KEINE Ranking Positions! (verhindert Infinite Loop)
+        // Diese werden separat berechnet, wenn sie benötigt werden
 
         return stats;
     }
 
+    /**
+     * NEUE METHODE: Berechnet UserStats MIT Ranking Positions (nur wenn explizit gewünscht)
+     */
+    public UserStats calculateUserStatsWithRankings(String username) {
+        UserStats stats = calculateUserStats(username); // Basis-Stats ohne Rankings
+
+        // Jetzt Rankings hinzufügen (vorsichtig, um Loops zu vermeiden)
+        try {
+            stats.setOverallRank(calculateUserRankPosition(username, "TOTAL"));
+            stats.setMonthlyRank(calculateUserRankPosition(username, "MONTHLY"));
+            stats.setStreakRank(calculateUserRankPosition(username, "STREAK"));
+        } catch (Exception e) {
+            System.err.println("Fehler beim Berechnen der Ranking-Positionen für " + username + ": " + e.getMessage());
+            // Setze Default-Werte
+            stats.setOverallRank(0);
+            stats.setMonthlyRank(0);
+            stats.setStreakRank(0);
+        }
+
+        return stats;
+    }
+
+    /**
+     * NEUE METHODE: Berechnet Ranking-Position für einen User (ohne Infinite Loop)
+     */
+    private int calculateUserRankPosition(String username, String rankingType) {
+        switch (rankingType) {
+            case "TOTAL":
+                List<Object[]> totalResults = trainingRepo.findUsersWithMostTrainings();
+                for (int i = 0; i < totalResults.size(); i++) {
+                    if (totalResults.get(i)[0].equals(username)) {
+                        return i + 1;
+                    }
+                }
+                break;
+
+            case "MONTHLY":
+                LocalDateTime now = LocalDateTime.now();
+                List<Object[]> monthlyResults = trainingRepo.findUsersWithMostTrainingsThisMonth(
+                        now.getYear(), now.getMonthValue());
+                for (int i = 0; i < monthlyResults.size(); i++) {
+                    if (monthlyResults.get(i)[0].equals(username)) {
+                        return i + 1;
+                    }
+                }
+                break;
+
+            case "STREAK":
+                // Vereinfachte Streak-Position ohne Rekursion
+                List<User> allUsers = userRepository.findAll();
+                List<UserStreakSimple> userStreaks = new ArrayList<>();
+
+                for (User user : allUsers) {
+                    // Berechne nur den Streak, nicht die kompletten Stats
+                    int streak = calculateUserStreak(user.getUsername());
+                    userStreaks.add(new UserStreakSimple(user.getUsername(), streak));
+                }
+
+                userStreaks.sort((a, b) -> Integer.compare(b.streak, a.streak));
+
+                for (int i = 0; i < userStreaks.size(); i++) {
+                    if (userStreaks.get(i).username.equals(username)) {
+                        return i + 1;
+                    }
+                }
+                break;
+        }
+        return 0; // Fallback
+    }
+
+    /**
+     * NEUE METHODE: Berechnet nur den Streak für einen User (ohne komplette Stats)
+     */
+    private int calculateUserStreak(String username) {
+        List<LocalDate> trainingDates = getDistinctTrainingDates(username);
+
+        if (trainingDates.isEmpty()) {
+            return 0;
+        }
+
+        int currentStreak = 0;
+        LocalDate today = LocalDate.now();
+        LocalDate checkDate = today;
+
+        // Prüfe ob heute trainiert wurde
+        if (trainingDates.contains(today)) {
+            currentStreak = 1;
+            checkDate = today.minusDays(1);
+        } else if (trainingDates.contains(today.minusDays(1))) {
+            currentStreak = 1;
+            checkDate = today.minusDays(2);
+        } else {
+            return 0; // Kein aktueller Streak
+        }
+
+        // Weitere Streak-Tage prüfen
+        for (LocalDate trainingDate : trainingDates) {
+            if (trainingDate.equals(checkDate)) {
+                currentStreak++;
+                checkDate = checkDate.minusDays(1);
+            } else if (trainingDate.isBefore(checkDate)) {
+                break;
+            }
+        }
+
+        return currentStreak;
+    }
+
     // =============================================================================
-    // STREAK BERECHNUNG
+    // STREAK BERECHNUNG - FIXED VERSION
     // =============================================================================
 
     /**
-     * Berechnet Current Streak und Longest Streak
+     * FIXED: Holt alle unterschiedlichen Trainings-Daten für einen User
+     */
+    private List<LocalDate> getDistinctTrainingDates(String username) {
+        List<Training> trainings = trainingRepo.findByUsernameOrderByDateDesc(username);
+        return trainings.stream()
+                .map(training -> training.getCreatedAt().toLocalDate())
+                .distinct()
+                .sorted(Collections.reverseOrder())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * FIXED: Berechnet Current Streak und Longest Streak
      */
     private void calculateStreaks(String username, UserStats stats) {
-        List<LocalDate> trainingDates = trainingRepo.findDistinctTrainingDatesByUsername(username);
+        List<LocalDate> trainingDates = getDistinctTrainingDates(username);
 
         if (trainingDates.isEmpty()) {
             stats.setCurrentStreak(0);
@@ -107,61 +230,46 @@ public class RankingService {
             return;
         }
 
-        // Sortiere Daten absteigend (neueste zuerst)
-        trainingDates.sort(Collections.reverseOrder());
-
         // Current Streak berechnen
-        int currentStreak = 0;
-        LocalDate today = LocalDate.now();
-        LocalDate checkDate = today;
-
-        for (LocalDate trainingDate : trainingDates) {
-            if (trainingDate.equals(checkDate) || trainingDate.equals(checkDate.minusDays(1))) {
-                currentStreak++;
-                checkDate = trainingDate.minusDays(1);
-            } else {
-                break;
-            }
-        }
-
-        // Falls heute noch nicht trainiert wurde, aber gestern schon
-        if (!trainingDates.contains(today) && trainingDates.contains(today.minusDays(1))) {
-            // Streak läuft noch, aber heute noch kein Training
-            // Entscheidung: Streak beibehalten oder unterbrechen?
-            // Hier: beibehalten, aber markieren dass heute noch Training fehlt
-        }
-
+        int currentStreak = calculateUserStreak(username);
         stats.setCurrentStreak(currentStreak);
 
         // Longest Streak berechnen
-        int longestStreak = 0;
-        int tempStreak = 0;
-        LocalDate previousDate = null;
+        stats.setLongestStreak(Math.max(currentStreak, calculateLongestStreak(trainingDates)));
+    }
 
-        // Sortiere aufsteigend für Longest Streak Berechnung
-        trainingDates.sort(Comparator.naturalOrder());
+    /**
+     * FIXED: Berechnet den längsten Streak
+     */
+    private int calculateLongestStreak(List<LocalDate> trainingDates) {
+        if (trainingDates.isEmpty()) return 0;
 
-        for (LocalDate date : trainingDates) {
-            if (previousDate == null || date.equals(previousDate.plusDays(1))) {
-                tempStreak++;
-                longestStreak = Math.max(longestStreak, tempStreak);
+        List<LocalDate> sortedDates = trainingDates.stream()
+                .sorted()
+                .collect(Collectors.toList());
+
+        int longestStreak = 1;
+        int currentStreak = 1;
+
+        for (int i = 1; i < sortedDates.size(); i++) {
+            LocalDate prevDate = sortedDates.get(i - 1);
+            LocalDate currDate = sortedDates.get(i);
+
+            if (currDate.equals(prevDate.plusDays(1))) {
+                currentStreak++;
+                longestStreak = Math.max(longestStreak, currentStreak);
             } else {
-                tempStreak = 1;
+                currentStreak = 1;
             }
-            previousDate = date;
         }
 
-        stats.setLongestStreak(longestStreak);
+        return longestStreak;
     }
 
     // =============================================================================
     // CONSISTENCY SCORE BERECHNUNG
     // =============================================================================
 
-    /**
-     * Berechnet Consistency Score (0-100%)
-     * Basiert auf regelmäßigen Trainings in den letzten 30 Tagen
-     */
     private double calculateConsistencyScore(String username) {
         LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
         List<Training> recentTrainings = trainingRepo.findByUsernameAfterDate(username, thirtyDaysAgo);
@@ -170,29 +278,20 @@ public class RankingService {
             return 0.0;
         }
 
-        // Gruppiere Trainings nach Datum
         Map<LocalDate, Long> trainingsByDate = recentTrainings.stream()
                 .collect(Collectors.groupingBy(
                         training -> training.getCreatedAt().toLocalDate(),
                         Collectors.counting()
                 ));
 
-        // Berechne Score basierend auf:
-        // - Anzahl Tage mit Trainings
-        // - Gleichmäßigkeit der Verteilung
-        // - Aktuelle Streak
-
         int daysWithTraining = trainingsByDate.size();
-        double dayScore = (daysWithTraining / 30.0) * 60; // Max 60 Punkte für Anzahl Tage
+        double dayScore = (daysWithTraining / 30.0) * 60;
 
-        // Bonus für Regelmäßigkeit (weniger Lücken)
-        UserStats tempStats = new UserStats();
-        calculateStreaks(username, tempStats);
-        double streakBonus = Math.min(tempStats.getCurrentStreak() * 2, 30); // Max 30 Punkte für Streak
+        int currentStreak = calculateUserStreak(username);
+        double streakBonus = Math.min(currentStreak * 2, 30);
 
-        // Bonus für häufige Trainings
         double avgTrainingsPerDay = recentTrainings.size() / 30.0;
-        double frequencyBonus = Math.min(avgTrainingsPerDay * 10, 10); // Max 10 Punkte für Häufigkeit
+        double frequencyBonus = Math.min(avgTrainingsPerDay * 10, 10);
 
         return Math.min(dayScore + streakBonus + frequencyBonus, 100.0);
     }
@@ -215,15 +314,11 @@ public class RankingService {
     private long getTodayTrainingCount(String username) {
         return trainingRepo.countByUsernameForDate(username, LocalDate.now());
     }
-    // FÜGE DIESE METHODEN AN DAS ENDE DER RankingService KLASSE HINZU:
 
     // =============================================================================
     // GLOBALE RANKINGS
     // =============================================================================
 
-    /**
-     * Globales Ranking nach Gesamtanzahl Trainings
-     */
     public RankingResponse getGlobalTrainingRanking(String currentUsername, int limit) {
         List<Object[]> results = trainingRepo.findUsersWithMostTrainings();
 
@@ -254,15 +349,11 @@ public class RankingService {
         response.setDescription("Ranking nach der Gesamtanzahl aller Trainings");
         response.setUpdateFrequency("Echtzeit");
 
-        // Finde Position des aktuellen Users
         findCurrentUserPosition(response, currentUsername, results);
 
         return response;
     }
 
-    /**
-     * Monatliches Ranking
-     */
     public RankingResponse getMonthlyTrainingRanking(String currentUsername, int limit) {
         LocalDateTime now = LocalDateTime.now();
         List<Object[]> results = trainingRepo.findUsersWithMostTrainingsThisMonth(
@@ -301,21 +392,20 @@ public class RankingService {
     }
 
     /**
-     * Streak Ranking
+     * FIXED: Streak Ranking (ohne Infinite Loop)
      */
     public RankingResponse getStreakRanking(String currentUsername, int limit) {
         List<User> allUsers = userRepository.findAll();
 
         List<RankingEntry> entries = new ArrayList<>();
 
-        // Berechne Streaks für alle User
+        // FIXED: Berechne Streaks direkt, ohne calculateUserStats() aufzurufen
         List<UserStreakInfo> userStreaks = new ArrayList<>();
         for (User user : allUsers) {
-            UserStats stats = calculateUserStats(user.getUsername());
-            userStreaks.add(new UserStreakInfo(user, stats.getCurrentStreak()));
+            int streak = calculateUserStreak(user.getUsername()); // Nur Streak, keine kompletten Stats
+            userStreaks.add(new UserStreakInfo(user, streak));
         }
 
-        // Sortiere nach Streak (absteigend)
         userStreaks.sort((a, b) -> Integer.compare(b.currentStreak, a.currentStreak));
 
         int position = 1;
@@ -344,7 +434,6 @@ public class RankingService {
         response.setDescription("Ranking nach aktuellen Training-Streaks");
         response.setUpdateFrequency("Täglich");
 
-        // Finde Position des aktuellen Users
         for (int i = 0; i < userStreaks.size(); i++) {
             if (userStreaks.get(i).user.getUsername().equals(currentUsername)) {
                 response.setCurrentUserPosition(i + 1);
@@ -360,16 +449,12 @@ public class RankingService {
     // FRIEND RANKINGS
     // =============================================================================
 
-    /**
-     * Friend Ranking für monatliche Trainings
-     */
     public FriendRankingResponse getFriendMonthlyRanking(String username) {
         List<User> friends = friendshipService.getFriends(username);
         LocalDateTime now = LocalDateTime.now();
 
         List<RankingEntry> friendEntries = new ArrayList<>();
 
-        // Berechne für jeden Freund die monatlichen Trainings
         List<FriendTrainingInfo> friendInfos = new ArrayList<>();
         for (User friend : friends) {
             long monthlyTrainings = trainingRepo.countByUsernameForMonth(
@@ -377,7 +462,6 @@ public class RankingService {
             friendInfos.add(new FriendTrainingInfo(friend, monthlyTrainings));
         }
 
-        // Sortiere nach Trainings (absteigend)
         friendInfos.sort((a, b) -> Long.compare(b.monthlyTrainings, a.monthlyTrainings));
 
         int position = 1;
@@ -394,7 +478,6 @@ public class RankingService {
             position++;
         }
 
-        // Aktueller User
         long userMonthlyTrainings = trainingRepo.countByUsernameForMonth(
                 username, now.getYear(), now.getMonthValue());
         User currentUser = userRepository.findByUsername(username).orElse(null);
@@ -404,7 +487,6 @@ public class RankingService {
         currentUserEntry.setAvatarId(currentUser.getAvatarID());
         currentUserEntry.setCurrentUser(true);
 
-        // Finde Position des aktuellen Users unter Freunden
         int userPosition = 1;
         for (FriendTrainingInfo friendInfo : friendInfos) {
             if (friendInfo.monthlyTrainings > userMonthlyTrainings) {
@@ -421,59 +503,59 @@ public class RankingService {
     }
 
     /**
-     * Friend Ranking für Streaks
+     * FIXED: Friend Ranking für Streaks (ohne Infinite Loop)
      */
     public FriendRankingResponse getFriendStreakRanking(String username) {
         List<User> friends = friendshipService.getFriends(username);
 
         List<RankingEntry> friendEntries = new ArrayList<>();
 
-        // Berechne für jeden Freund den Streak
+        // FIXED: Direkte Streak-Berechnung ohne komplette UserStats
         List<FriendStreakInfo> friendInfos = new ArrayList<>();
         for (User friend : friends) {
-            UserStats stats = calculateUserStats(friend.getUsername());
-            friendInfos.add(new FriendStreakInfo(friend, stats.getCurrentStreak()));
+            int streak = calculateUserStreak(friend.getUsername());
+            friendInfos.add(new FriendStreakInfo(friend, streak));
         }
 
-        // Sortiere nach Streak (absteigend)
-        friendInfos.sort((a, b) -> Integer.compare(b.currentStreak, a.currentStreak));
+        // Aktueller User Streak
+        int userStreak = calculateUserStreak(username);
+        User currentUser = userRepository.findByUsername(username).orElse(null);
+
+        // Alle User für korrektes Ranking
+        List<FriendStreakInfo> allInfos = new ArrayList<>(friendInfos);
+        allInfos.add(new FriendStreakInfo(currentUser, userStreak));
+
+        allInfos.sort((a, b) -> Integer.compare(b.currentStreak, a.currentStreak));
 
         int position = 1;
-        for (FriendStreakInfo friendInfo : friendInfos) {
-            User friend = friendInfo.user;
-            int streak = friendInfo.currentStreak;
+        int currentUserPosition = 1;
 
-            RankingEntry entry = new RankingEntry(position, friend.getUsername(), friend.getName(),
-                    streak, streak + " Tage");
-            entry.setAvatarId(friend.getAvatarID());
-            entry.setBadge(getStreakBadge(streak));
+        for (FriendStreakInfo info : allInfos) {
+            User user = info.user;
+            int streak = info.currentStreak;
 
-            if (streak > 0) {
-                entry.setAdditionalInfo("🔥");
+            if (!user.getUsername().equals(username)) {
+                RankingEntry entry = new RankingEntry(position, user.getUsername(), user.getName(),
+                        streak, streak + " Tage");
+                entry.setAvatarId(user.getAvatarID());
+                entry.setBadge(getStreakBadge(streak));
+
+                if (streak > 0) {
+                    entry.setAdditionalInfo("🔥");
+                }
+
+                friendEntries.add(entry);
+            } else {
+                currentUserPosition = position;
             }
-
-            friendEntries.add(entry);
             position++;
         }
 
-        // Aktueller User
-        UserStats userStats = calculateUserStats(username);
-        User currentUser = userRepository.findByUsername(username).orElse(null);
-
-        RankingEntry currentUserEntry = new RankingEntry(0, username, currentUser.getName(),
-                userStats.getCurrentStreak(), userStats.getCurrentStreak() + " Tage");
+        RankingEntry currentUserEntry = new RankingEntry(currentUserPosition, username, currentUser.getName(),
+                userStreak, userStreak + " Tage");
         currentUserEntry.setAvatarId(currentUser.getAvatarID());
         currentUserEntry.setCurrentUser(true);
-        currentUserEntry.setBadge(getStreakBadge(userStats.getCurrentStreak()));
-
-        // Finde Position des aktuellen Users
-        int userPosition = 1;
-        for (FriendStreakInfo friendInfo : friendInfos) {
-            if (friendInfo.currentStreak > userStats.getCurrentStreak()) {
-                userPosition++;
-            }
-        }
-        currentUserEntry.setPosition(userPosition);
+        currentUserEntry.setBadge(getStreakBadge(userStreak));
 
         FriendRankingResponse response = new FriendRankingResponse(
                 "FRIEND_STREAK", "Freunde - Streaks", friendEntries, currentUserEntry);
@@ -486,33 +568,24 @@ public class RankingService {
     // RANKING OVERVIEW
     // =============================================================================
 
-    /**
-     * Komplette Ranking Übersicht
-     */
     public RankingOverviewResponse getRankingOverview(String username) {
         RankingOverviewResponse overview = new RankingOverviewResponse();
 
-        // User Stats
         overview.setCurrentUserStats(calculateUserStats(username));
 
-        // Top Rankings (nur Top 3)
         overview.setTopTrainingsAllTime(getGlobalTrainingRanking(username, 3).getEntries());
         overview.setTopTrainingsThisMonth(getMonthlyTrainingRanking(username, 3).getEntries());
         overview.setTopStreaks(getStreakRanking(username, 3).getEntries());
 
-        // Challenge Ranking (vereinfacht)
         overview.setTopChallengeWinners(getChallengeWinnerRanking(username, 3));
 
-        // Friend Rankings
         overview.setFriendsThisMonth(getFriendMonthlyRanking(username));
         overview.setFriendsStreak(getFriendStreakRanking(username));
 
-        // User Positionen in globalen Rankings
         overview.setMyOverallPosition(getGlobalTrainingRanking(username, 1000).getCurrentUserPosition());
         overview.setMyMonthlyPosition(getMonthlyTrainingRanking(username, 1000).getCurrentUserPosition());
         overview.setMyStreakPosition(getStreakRanking(username, 1000).getCurrentUserPosition());
 
-        // Achievements und Milestones
         overview.setRecentAchievements(generateAchievements(overview.getCurrentUserStats()));
         overview.setUpcomingMilestones(generateMilestones(overview.getCurrentUserStats()));
 
@@ -553,7 +626,6 @@ public class RankingService {
     }
 
     private List<RankingEntry> getChallengeWinnerRanking(String currentUsername, int limit) {
-        // Vereinfachtes Challenge Ranking - kann später erweitert werden
         List<RankingEntry> entries = new ArrayList<>();
 
         List<User> allUsers = userRepository.findAll();
@@ -637,6 +709,16 @@ public class RankingService {
         }
     }
 
+    private static class UserStreakSimple {
+        String username;
+        int streak;
+
+        UserStreakSimple(String username, int streak) {
+            this.username = username;
+            this.streak = streak;
+        }
+    }
+
     private static class FriendTrainingInfo {
         User user;
         long monthlyTrainings;
@@ -666,6 +748,4 @@ public class RankingService {
             this.wonChallenges = wonChallenges;
         }
     }
-
-// SCHLIESSENDE KLAMMER FÜR DIE RankingService KLASSE
 }
