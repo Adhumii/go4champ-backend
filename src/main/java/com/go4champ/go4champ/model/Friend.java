@@ -6,7 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 
 @Entity
-public class Friend {
+public class Friend {// kann glaube ich gelöscht werdenm
     @Id
     private int friendID;
     @OneToOne

@@ -155,8 +155,12 @@ public class ChallengeService {
             challenge.setChallengedSubmitted(true);
         }
 
-        // Prüfe ob Challenge abgeschlossen werden kann
+        // KORREKTUR: Prüfe ob Challenge abgeschlossen werden kann
         if (challenge.getType() != ChallengeType.FREE && challenge.isCompleted()) {
+            // WICHTIG: Winner bestimmen für REPS und WEIGHT Challenges
+            User winner = challenge.determineWinner();
+            challenge.setWinner(winner);
+
             challenge.setStatus(ChallengeStatus.COMPLETED);
             challenge.setCompletedAt(LocalDateTime.now());
         }
@@ -209,7 +213,6 @@ public class ChallengeService {
 
         return toChallengeResponse(savedChallenge, username);
     }
-    // FÜGE DIESE METHODEN AN DAS ENDE DER ChallengeService KLASSE HINZU:
 
     /**
      * Holt alle Challenges eines Users
@@ -252,20 +255,70 @@ public class ChallengeService {
     }
 
     /**
-     * Holt Challenge Übersicht/Statistiken
+     * Holt Challenge Übersicht/Statistiken - KORRIGIERT
      */
     public ChallengeOverviewResponse getChallengeOverview(String username) {
-        List<Challenge> allChallenges = challengeRepository.findAllByUsername(username);
         List<Challenge> completedChallenges = challengeRepository.findCompletedChallenges(username);
 
-        long totalChallenges = allChallenges.size();
-        long wonChallenges = challengeRepository.countWonChallenges(username);
-        long lostChallenges = challengeRepository.countLostChallenges(username);
+        long totalChallenges = challengeRepository.findAllByUsername(username).size();
         long activeChallenges = challengeRepository.findActiveChallenges(username).size();
         long pendingIncoming = challengeRepository.findPendingChallenges(username).size();
         long pendingOutgoing = challengeRepository.findOutgoingChallenges(username).stream()
                 .filter(c -> c.getStatus() == ChallengeStatus.PENDING)
                 .count();
+
+        // KORRIGIERTE Statistik-Berechnung
+        long wonChallenges = 0;
+        long lostChallenges = 0;
+        long repsWon = 0, weightWon = 0, freeWon = 0;
+        long repsLost = 0, weightLost = 0, freeLost = 0;
+
+        for (Challenge challenge : completedChallenges) {
+            boolean userWon = false;
+
+            if (challenge.getType() == ChallengeType.FREE) {
+                // Bei FREE Type: Winner direkt prüfen
+                userWon = challenge.getWinner() != null &&
+                        challenge.getWinner().getUsername().equals(username);
+            } else {
+                // Bei REPS/WEIGHT: Ergebnisse vergleichen
+                if (challenge.getChallengerResult() != null && challenge.getChallengedResult() != null) {
+                    if (challenge.getChallenger().getUsername().equals(username)) {
+                        userWon = challenge.getChallengerResult() > challenge.getChallengedResult();
+                    } else if (challenge.getChallenged().getUsername().equals(username)) {
+                        userWon = challenge.getChallengedResult() > challenge.getChallengerResult();
+                    }
+                }
+            }
+
+            if (userWon) {
+                wonChallenges++;
+                switch (challenge.getType()) {
+                    case REPS -> repsWon++;
+                    case WEIGHT -> weightWon++;
+                    case FREE -> freeWon++;
+                }
+            } else {
+                // Nur als verloren zählen wenn es keinen Tie gibt
+                boolean isTie = false;
+                if (challenge.getType() == ChallengeType.FREE) {
+                    isTie = challenge.getWinner() == null;
+                } else {
+                    isTie = challenge.getChallengerResult() != null &&
+                            challenge.getChallengedResult() != null &&
+                            challenge.getChallengerResult().equals(challenge.getChallengedResult());
+                }
+
+                if (!isTie) {
+                    lostChallenges++;
+                    switch (challenge.getType()) {
+                        case REPS -> repsLost++;
+                        case WEIGHT -> weightLost++;
+                        case FREE -> freeLost++;
+                    }
+                }
+            }
+        }
 
         double winRate = (totalChallenges > 0) ? (double) wonChallenges / totalChallenges * 100 : 0.0;
 
@@ -277,6 +330,12 @@ public class ChallengeService {
         overview.setPendingIncoming(pendingIncoming);
         overview.setPendingOutgoing(pendingOutgoing);
         overview.setWinRate(Math.round(winRate * 100.0) / 100.0);
+        overview.setRepsWon(repsWon);
+        overview.setWeightWon(weightWon);
+        overview.setFreeWon(freeWon);
+        overview.setRepsLost(repsLost);
+        overview.setWeightLost(weightLost);
+        overview.setFreeLost(freeLost);
 
         return overview;
     }
@@ -365,6 +424,4 @@ public class ChallengeService {
         challenge.setStatus(ChallengeStatus.CANCELLED);
         challengeRepository.save(challenge);
     }
-
-// SCHLIESSENDE KLAMMER FÜR DIE ChallengeService KLASSE
 }
