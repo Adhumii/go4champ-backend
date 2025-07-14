@@ -6,7 +6,7 @@
 spring.application.name=Go4Champ
 
 # ========== DATENBANK-KONFIGURATION ==========
-# Dynamische Konfiguration für Render und Lokal
+# Dynamische Konfiguration fÃ¼r Render und Lokal
 # Render setzt einzelne DB_* Environment Variables
 # Lokal nutzt MySQL
 
@@ -43,7 +43,7 @@ spring.mail.properties.mail.smtp.starttls.required=true
 spring.mail.properties.mail.smtp.ssl.trust=smtp.gmail.com
 management.health.mail.enabled=false
 
-# ========== PRODUCTION URLs =========
+# ========== PRODUCTION URLs ==========
 app.frontend.url=https://go4champ-frontend.onrender.com
 app.backend.url=https://go4champ-backend-x.onrender.com
 
