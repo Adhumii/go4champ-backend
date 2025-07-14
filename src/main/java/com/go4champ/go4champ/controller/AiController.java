@@ -10,6 +10,7 @@ import com.go4champ.go4champ.repo.UserRepo;
 import com.go4champ.go4champ.service.TrainingService;
 import com.go4champ.go4champ.service.TrainingsPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +21,8 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+
 
 @RestController
 @RequestMapping("/api/ai")
@@ -34,16 +37,19 @@ public class AiController {
     @Autowired
     private TrainingsPlanService trainingsPlanService;
 
+    @Value("${anthropic.api.key}")
+    private String apiKey;
+
     private String callCloudAI(String prompt) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-api-key", System.getenv("ANTHROPIC_API_KEY"));
+        headers.set("x-api-key", apiKey);  // Key sicher geladen
         headers.set("anthropic-version", "2023-06-01");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "claude-3-opus-20240229");
-        requestBody.put("max_tokens", 1000);
+        requestBody.put("max_tokens", 3000);
         requestBody.put("messages", List.of(
                 Map.of("role", "user", "content", prompt)
         ));
@@ -66,40 +72,47 @@ public class AiController {
                 return ResponseEntity.status(404).body(Map.of("error", "Benutzer nicht gefunden"));
             }
 
-            // Prompt für JSON mit Trainingsobjekten
             String prompt = String.format("""
-Gib mir eine JSON-Liste mit genau 3 Trainingsobjekten. Die Trainingsobjekte sind für eine Person mit:
-Alter: %d, Gewicht: %d kg, Zielgewicht: %d kg.
+                    Du bist ein virtueller Fitness-Coach. Deine Aufgabe ist es, für folgende Person Trainingsobjekte zu erstellen:
+                    
+                              - Alter: %d Jahre
+                              - Gewicht: %d kg
+                              - Zielgewicht: %d kg
 
-Jedes Objekt soll enthalten:
-- title (String)
-- duration (int)
-- difficulty (float, 1.0–5.0)
-- typeString (String: Indoor oder Outdoor)
-- description (String)
+                    Jedes Trainingsobjekt muss ein eigenständiges JSON-Objekt in einer JSON-Liste sein.
+                    Gib **ausschließlich die JSON-Liste** zurück, ohne zusätzliche Erklärungen oder Kommentare.
+                    
+                              Struktur jedes Objekts:
+                                    {
+                                        "title": "Name des Trainings (String)",
+                                        "duration": Dauer in Minuten (int),
+                                        "difficulty": Schwierigkeitsgrad von 1.0 bis 5.0 (float),
+                                        "typeString": "Indoor" oder "Outdoor" (String),
+                                        "description": "Trainingsbeschreibung (String)"
+                                    }
+                    
+                                       Wichtige Regeln:
+                                           - Antworte ausschließlich im JSON-Format.
+                                           - Keine einleitenden Sätze, Überschriften oder Kommentare.
+                                           - Verwende gültiges JSON (Strings in Anführungszeichen, keine Zeilenumbrüche in Werten).
+""", user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender(),String.join(", ", user.getAvailableEquipment())
+            );
 
-Antwort **nur mit JSON**, ohne Text davor oder danach.
-""", user.getAge(), user.getWeight(), user.getWeightGoal());
-
-            // KI-Antwort abrufen
             String aiReply = callCloudAI(prompt);
 
-            // JSON in Java-Objekte parsen
             ObjectMapper mapper = new ObjectMapper();
             List<Training> trainings = mapper.readValue(aiReply, new TypeReference<>() {});
 
-            // Trainingsplan erstellen und speichern
             TrainingsPlan plan = new TrainingsPlan();
             plan.setPlanName("KI-Plan vom " + LocalDate.now());
             plan.setDescription("Automatisch generierter Plan");
             plan.setUser(user);
             trainingsPlanService.createTrainingsPlan(plan, username);
 
-            // Trainingsobjekte zuweisen und speichern
             for (Training training : trainings) {
                 training.setUser(user);
                 training.setTrainingsPlan(plan);
-                training.setTypeString(training.getTypeString()); // konvertiert Indoor/Outdoor zu true/false
+                training.setTypeString(training.getTypeString());
                 trainingService.createTraining(training);
                 plan.addTraining(training);
             }

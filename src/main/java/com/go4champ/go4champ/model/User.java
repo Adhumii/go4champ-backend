@@ -321,4 +321,8 @@ public class User {
                 ", avatarID='" + avatarID + '\'' +
                 '}';
     }
+
+    public void setEmailConfirmed(boolean b) {
+        this.emailVerified = b;
+    }
 }

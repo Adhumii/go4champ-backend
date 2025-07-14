@@ -24,6 +24,10 @@ public class Go4ChampApplication {
 				admin.setUsername("admin");
 				admin.setPassword("adminPassword"); // KLARTEXT! UserService verschlüsselt es
 				admin.setName("Admin User");
+				admin.setAge(30);
+				admin.setWeight(80);
+				admin.setHeight(175);
+				admin.setWeightGoal(75);
 				admin.setRoles(List.of("ROLE_ADMIN"));
 
 				userService.createUser(admin); // Hier wird das Passwort verschlüsselt

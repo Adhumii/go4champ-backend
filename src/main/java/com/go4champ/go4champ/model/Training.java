@@ -51,6 +51,7 @@ public class Training {
     public Training() {
     }
 
+
     public Training(int trainingId, int duration, float difficulty, boolean type, String description, String title) {
         this.trainingId = trainingId;
         this.duration = duration;
