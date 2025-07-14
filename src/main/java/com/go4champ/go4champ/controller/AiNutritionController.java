@@ -72,33 +72,32 @@ public class AiNutritionController {
             }
 
             String prompt = String.format("""
-                    Du bist ein Ernährungsberater und sollst einen auf die Person zugeschnittenen Ernährungsplan mit bis zu 4 Mahlzeiten erstellen:
-                                               – Frühstück
-                                               – Mittagessen
-                                               – Snack
-                                               – Abendessen
+    
+    Du bist ein professioneller Ernährungsberater und sollst einen individuellen Ernährungsplan mit bis zu 4 Gerichten erstellen. 
+    Die Person hat folgende Merkmale:
+    - Alter: %d Jahre
+    - Gewicht: %d kg
+    - Zielgewicht: %d kg
+    - Größe: %d cm
+    - Geschlecht: %s
 
-                                               Die Person hat folgende Merkmale:
-                                               - Alter: %d Jahre
-                                               - Gewicht: %d kg
-                                               - Zielgewicht: %d kg
-                                               - Größe: %d cm
-                                               - Geschlecht: %s
+    Für jede Mahlzeit erstellst du ein **einzelnes JSON-Objekt** mit folgenden Feldern:
 
-                                               Jede Mahlzeit soll ein JSON-Objekt mit folgenden Feldern sein:
-                                               {
-                                                 "title": "String – z.B. 'Rührei mit Gemüse'",
-                                                 "type": "Frühstück | Mittagessen | Snack | Abendessen",
-                                                 "description": "String –  Beschreibung der Mahlzeit und Zubereitung",
-                                                 "calories": int – z.B. 450
-                                               }
+    {
+      "name": "Titel des Gerichts",
+      "type": "Frühstück | Mittagessen | Snack | Abendessen",
+      "description": "Kurze Beschreibung der Mahlzeit",
+      "calories": Ganzzahl,
+      "protein": Ganzzahl in g,
+      "fat": Ganzzahl in g,
+      "carbs": Ganzzahl in g,
+      "ingredients": ["Zutat 1", "Zutat 2", "..."],
+      "instructions": ["Schritt 1", "Schritt 2", "..."]
+    }
 
-                                               Antwortregeln:
-                                               - Gib eine **JSON-Array** bis zu 4 Objekten zurück.
-                                               - Keine Einleitung, kein Fließtext.
-                                               - Keine Kommentare oder Markdown.
-                                               - Nur gültiges JSON, direkt ab der ersten Zeile.
-                """, user.getAge(), user.getWeight(), user.getWeightGoal(),user.getHeight(), user.getGender());
+    Gib ein **JSON-Array** mit bis zu 4 dieser Objekte zurück. 
+    Keine Einleitung, keine Erklärungen, keine Formatierungen – nur sauberes JSON.
+    """, user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender());
 
             String aiResponse = callCloudAI(prompt);
 
