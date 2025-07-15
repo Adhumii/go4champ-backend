@@ -42,7 +42,7 @@ public class AiNutritionController {
     private String callCloudAI(String prompt) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-api-key", apiKey);  // Key sicher geladen
+        headers.set("x-api-key", apiKey);
         headers.set("anthropic-version", "2023-06-01");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -57,8 +57,24 @@ public class AiNutritionController {
         );
 
         List<Map<String, Object>> contentList = (List<Map<String, Object>>) response.getBody().get("content");
-        return (String) contentList.get(0).get("text");
+        String raw = (String) contentList.get(0).get("text");
+        String trimmed = raw.trim();
+
+        try {
+            // Wenn Claude das JSON als String mit \" übermittelt, z. B. "[{\"name\": ...}]"
+            if (trimmed.startsWith("\"[") && trimmed.endsWith("]\"")) {
+                // Entpacke den String aus den Escape-Zeichen (also doppelt dekodieren)
+                trimmed = mapper.readValue(trimmed, String.class);
+            }
+        } catch (JsonProcessingException e) {
+            System.out.println("Fehler beim Entpacken der KI-Antwort: " + e.getMessage());
+            return "[]";
+        }
+
+        return trimmed;
     }
+
+
 
     @PostMapping("/create-plan")
     public ResponseEntity<?> generateNutritionPlan(@RequestBody AiRequest request) {
@@ -139,6 +155,75 @@ public class AiNutritionController {
             return ResponseEntity.ok(Map.of(
                     "antwort", aiResponse,
                     "planName", plan.getPlanName()
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Fehler: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/create-recipe")
+    public ResponseEntity<?> generateRecipes(@RequestBody AiRequest request) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            User user = userRepo.findByUsername(username).orElse(null);
+
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Benutzer nicht gefunden"));
+            }
+
+            String nutzerPrompt = request.getPrompt();
+
+            String prompt = String.format("""
+            Du bist ein professioneller Ernährungsberater. 
+            Du sollst passendes Rezept für folgende Person erstellen:
+
+            - Alter: %d Jahre
+            - Gewicht: %d kg
+            - Zielgewicht: %d kg
+            - Größe: %d cm
+            - Geschlecht: %s
+
+            Die Rezepte sollen folgendem Prompt entsprechen: "%s"
+
+            Gib ein vom Benutzer Beschriebenes Gericht als JSON-Array mit folgenden Feldern zurück:
+
+            {
+              "name": "Name des Gerichts",
+              "type": "Frühstück | Mittagessen | Snack | Abendessen",
+              "description": "Kurze Beschreibung",
+              "calories": Ganzzahl,
+              "protein": Ganzzahl in g,
+              "fat": Ganzzahl in g,
+              "carbs": Ganzzahl in g,
+              "ingredients": ["Zutat 1", "Zutat 2", ...],
+              "instructions": ["Schritt 1", "Schritt 2", ...]
+            }
+
+            Regeln:
+            - Gib nur eine gültige JSON-Liste zurück.
+            - Keine Erklärungen, Kommentare oder Überschriften.
+            - Nur gültiges JSON ab Zeile 1.
+        """, user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender(), nutzerPrompt);
+
+            String aiResponse = callCloudAI(prompt);
+
+            JsonNode node = mapper.readTree(aiResponse);
+            if (!node.isArray()) {
+                return ResponseEntity.status(400).body(Map.of("error", "KI-Antwort ist kein JSON-Array", "antwort", aiResponse));
+            }
+
+            List<Meal> meals = mapper.readValue(node.toString(), new TypeReference<>() {});
+
+            for (Meal meal : meals) {
+                meal.setUser(user);
+                mealService.save(meal);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "antwort", aiResponse,
+                    "rezepte", meals
             ));
 
         } catch (Exception e) {

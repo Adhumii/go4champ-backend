@@ -19,11 +19,15 @@ public class Meal {
     @Lob
     private String description;
 
-    @Lob
-    private String ingredients;  // Zutaten als Text oder JSON-String
+    @ElementCollection
+    @CollectionTable(name = "meal_ingredients", joinColumns = @JoinColumn(name = "meal_id"))
+    @Column(name = "ingredient")
+    private List<String> ingredients;
 
-    @Lob
-    private String instructions; // Zubereitungsschritte als Text oder JSON-String
+    @ElementCollection
+    @CollectionTable(name = "meal_instructions", joinColumns = @JoinColumn(name = "meal_id"))
+    @Column(name = "instruction")
+    private List<String> instructions;
 
     private Integer protein;
     private Integer fat;
@@ -35,6 +39,7 @@ public class Meal {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     // Getter und Setter
@@ -53,11 +58,11 @@ public class Meal {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public String getIngredients() { return ingredients; }
-    public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+    public List<String> getIngredients() { return ingredients; }
+    public void setIngredients(List<String> ingredients) { this.ingredients = ingredients; }
 
-    public String getInstructions() { return instructions; }
-    public void setInstructions(String instructions) { this.instructions = instructions; }
+    public List<String> getInstructions() { return instructions; }
+    public void setInstructions(List<String> instructions) { this.instructions = instructions; }
 
     public Integer getProtein() { return protein; }
     public void setProtein(Integer protein) { this.protein = protein; }
