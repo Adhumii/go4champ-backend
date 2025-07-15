@@ -47,7 +47,7 @@ public class AiController {
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "claude-3-opus-20240229");
-        requestBody.put("max_tokens", 3000);
+        requestBody.put("max_tokens", 4000);
         requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
@@ -69,7 +69,7 @@ public class AiController {
 
             String prompt = String.format("""
 Du bist ein KI-gestützter Fitness-Coach und darfst **ausschließlich Trainingspläne und Trainingsübungen** erstellen.
-
+Die Beschreibungen der Trainingsübungen müssen **ausführlich und verständlich** sein. Der Name einer Übung alleine reicht nicht aus die Beschreibung muss mindestens 3 Sätze umfassen.
 Wenn der Nutzer eine Frage stellt, die **nicht zum Bereich Sport und Fitness gehört**, musst du exakt sagen:
 "Dazu kann ich nichts sagen."
 
@@ -98,9 +98,15 @@ Erstelle **1–4 Trainingsobjekte** im JSON-Format auf Grundlage der folgenden P
 ### Regeln:
 - Gib **nur** eine JSON-Liste von max. 4 Objekten zurück.
 - Verwende kein Markdown, keine Kommentare, keine Erklärungen.
-- Wenn die Anfrage nicht zum Thema passt, gib **nur diesen Satz** aus:
+-Achte auf die Fragen des Nutzers und passe die Trainingsobjekte entsprechend an.
+-Die description der Trainingsübungen müssen **ausführlich und verständlich** sein. Der Name einer Übung alleine reicht nicht aus die Beschreibung muss mindestens 3 Sätze umfassen.
+- Wenn die Anfrage nicht zum Thema passt, (z.b. "Was ist Java?") gib **nur diesen Satz** aus:
 "Dazu kann ich nichts sagen."
-""", user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender(), String.join(", ", user.getAvailableEquipment()));
+
+---
+### Nutzeranfrage:
+%s
+""", user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender(), String.join(", ", user.getAvailableEquipment()), request.getPrompt());
 
             String aiReply = callCloudAI(prompt).trim();
 
