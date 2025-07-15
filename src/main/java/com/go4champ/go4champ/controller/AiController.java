@@ -18,11 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -40,24 +36,23 @@ public class AiController {
     @Value("${anthropic.api.key}")
     private String apiKey;
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     private String callCloudAI(String prompt) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.set("x-api-key", apiKey);  // Key sicher geladen
+        headers.set("x-api-key", apiKey);
         headers.set("anthropic-version", "2023-06-01");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "claude-3-opus-20240229");
         requestBody.put("max_tokens", 3000);
-        requestBody.put("messages", List.of(
-                Map.of("role", "user", "content", prompt)
-        ));
+        requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-        String url = "https://api.anthropic.com/v1/messages";
+        ResponseEntity<Map> response = restTemplate.postForEntity("https://api.anthropic.com/v1/messages", entity, Map.class);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
         List<Map<String, Object>> contentList = (List<Map<String, Object>>) response.getBody().get("content");
         return (String) contentList.get(0).get("text");
     }
@@ -73,36 +68,16 @@ public class AiController {
             }
 
             String prompt = String.format("""
-Du bist ein **streng beschränkter KI-Fitness-Coach**.  
-Du **darfst ausschließlich** über folgende Themen sprechen:
+Du bist ein KI-gestützter Fitness-Coach und darfst **ausschließlich Trainingspläne und Trainingsübungen** erstellen.
 
-- Trainingspläne
-- Übungen
-- Fitnessziele
-- Körperliche Gesundheit
-- Geräte im Training
-- Motivation zum Sport
-
-Du **darfst keine Fragen** beantworten zu anderen Themen – wie z. B. Politik, Geschichte, Informatik, Psychologie, Ernährung, Religion oder persönlichen Meinungen.  
-Wenn eine Frage nicht zum Fitnessbereich gehört, **musst du immer exakt folgendes sagen**:
-
+Wenn der Nutzer eine Frage stellt, die **nicht zum Bereich Sport und Fitness gehört**, musst du exakt sagen:
 "Dazu kann ich nichts sagen."
 
 ---
 
-### Deine Aufgabe:
+### Aufgabe:
+Erstelle **1–4 Trainingsobjekte** im JSON-Format auf Grundlage der folgenden Personendaten:
 
-Erstelle für folgende Person bis zu 4 **Trainingsobjekte** mit dieser Struktur:
-
-{
-  "title": "Name des Trainings (String)",
-  "duration": Dauer in Minuten (int, max. 20),
-  "difficulty": Schwierigkeitsgrad von 1.0 bis 5.0 (float),
-  "typeString": "Indoor" oder "Outdoor" (String),
-  "description": "Trainingsbeschreibung (String)"
-}
-
-Daten der Person:
 - Alter: %d Jahre
 - Gewicht: %d kg
 - Zielgewicht: %d kg
@@ -110,20 +85,31 @@ Daten der Person:
 - Geschlecht: %s
 - Verfügbare Geräte: %s
 
-### Wichtige Regeln:
-- Gib ausschließlich eine gültige JSON-Liste mit 1–4 Trainingsobjekten zurück
-- Keine Kommentare, kein Markdown, keine Erklärungen
-- Wenn der Nutzer keine trainingsbezogene Anfrage stellt, gib **keine JSON-Ausgabe** und antworte nur mit:  
-  `"Dazu kann ich nichts sagen."`
+### Jedes Trainingsobjekt hat folgendes Format:
 
+{
+  "title": "String",
+  "duration": 10–20 (int),
+  "difficulty": 1.0–5.0 (float),
+  "typeString": "Indoor" oder "Outdoor",
+  "description": "String"
+}
+
+### Regeln:
+- Gib **nur** eine JSON-Liste von max. 4 Objekten zurück.
+- Verwende kein Markdown, keine Kommentare, keine Erklärungen.
+- Wenn die Anfrage nicht zum Thema passt, gib **nur diesen Satz** aus:
+"Dazu kann ich nichts sagen."
 """, user.getAge(), user.getWeight(), user.getWeightGoal(), user.getHeight(), user.getGender(), String.join(", ", user.getAvailableEquipment()));
 
+            String aiReply = callCloudAI(prompt).trim();
 
-            String aiReply = callCloudAI(prompt);
+            // Wenn die KI mit dem Ablehnungssatz geantwortet hat → kein Plan erstellen
+            if (aiReply.equalsIgnoreCase("Dazu kann ich nichts sagen.")) {
+                return ResponseEntity.ok(Map.of("antwort", aiReply));
+            }
 
-            ObjectMapper mapper = new ObjectMapper();
             List<Training> trainings = mapper.readValue(aiReply, new TypeReference<>() {});
-
             TrainingsPlan plan = new TrainingsPlan();
             plan.setPlanName("KI-Plan vom " + LocalDate.now());
             plan.setDescription("Automatisch generierter Plan");
