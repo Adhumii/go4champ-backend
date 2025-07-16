@@ -14,7 +14,7 @@ public class FriendRequest {
 
 
     @ManyToOne
-
+    @JsonIgnore
     @JoinColumn(name = "sender_username", nullable = false)
     private User sender;
 
