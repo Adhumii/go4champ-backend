@@ -31,7 +31,7 @@ public class FriendshipController {
 
     @Operation(summary = "Holt alle Freunde des eingeloggten Users")
     @GetMapping("/me/friends")
-    public ResponseEntity<?> getMyFriends(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getMyFriends(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -56,7 +56,7 @@ public class FriendshipController {
     @Operation(summary = "Prüft den Freundschaftsstatus mit einem anderen User")
     @GetMapping("/me/friendship-status/{otherUsername}")
     public ResponseEntity<?> getFriendshipStatus(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String otherUsername) {
         try {
             // JWT Token aus Header extrahieren
@@ -85,7 +85,7 @@ public class FriendshipController {
     @Operation(summary = "Entfernt einen Freund")
     @DeleteMapping("/me/friends/{friendUsername}")
     public ResponseEntity<?> removeFriend(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String friendUsername) {
         try {
             // JWT Token aus Header extrahieren
@@ -120,7 +120,7 @@ public class FriendshipController {
     @Operation(summary = "Sendet eine Freundschaftsanfrage")
     @PostMapping("/me/friend-requests")
     public ResponseEntity<?> sendFriendRequest(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody Map<String, String> requestData) {
         try {
             // JWT Token aus Header extrahieren
@@ -159,15 +159,23 @@ public class FriendshipController {
 
     @Operation(summary = "Holt alle eingehenden Freundschaftsanfragen")
     @GetMapping("/me/friend-requests/incoming")
-    public ResponseEntity<?> getIncomingFriendRequests(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getIncomingFriendRequests(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
+            System.out.println("=== DEBUG INCOMING REQUESTS ===");
+            System.out.println("Auth Header: " + authHeader);
+            System.out.println("Auth Header is null: " + (authHeader == null));
+
             // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                System.out.println("ERROR: Kein gültiger Token gefunden");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kein gültiger Token");
             }
 
             String token = authHeader.substring(7);
+            System.out.println("Token vorhanden: " + !token.isEmpty());
+
             String username = jwtUtil.getUsernameFromToken(token);
+            System.out.println("Username: " + username);
 
             // Eingehende Anfragen holen
             List<FriendRequest> incomingRequests = friendshipService.getIncomingRequests(username);
@@ -178,6 +186,8 @@ public class FriendshipController {
                     "count", count
             ));
         } catch (Exception e) {
+            System.out.println("EXCEPTION: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Fehler beim Abrufen der eingehenden Anfragen: " + e.getMessage());
         }
@@ -186,7 +196,7 @@ public class FriendshipController {
     @Operation(summary = "Akzeptiert eine Freundschaftsanfrage")
     @PostMapping("/me/friend-requests/{requestId}/accept")
     public ResponseEntity<?> acceptFriendRequest(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long requestId) {
         try {
             // JWT Token aus Header extrahieren
@@ -214,7 +224,7 @@ public class FriendshipController {
     @Operation(summary = "Lehnt eine Freundschaftsanfrage ab")
     @PostMapping("/me/friend-requests/{requestId}/reject")
     public ResponseEntity<?> rejectFriendRequest(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long requestId) {
         try {
             // JWT Token aus Header extrahieren
@@ -245,15 +255,23 @@ public class FriendshipController {
 
     @Operation(summary = "Holt alle ausgehenden Freundschaftsanfragen")
     @GetMapping("/me/friend-requests/outgoing")
-    public ResponseEntity<?> getOutgoingFriendRequests(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getOutgoingFriendRequests(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
+            System.out.println("=== DEBUG OUTGOING REQUESTS ===");
+            System.out.println("Auth Header: " + authHeader);
+            System.out.println("Auth Header is null: " + (authHeader == null));
+
             // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                System.out.println("ERROR: Kein gültiger Token gefunden");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kein gültiger Token");
             }
 
             String token = authHeader.substring(7);
+            System.out.println("Token vorhanden: " + !token.isEmpty());
+
             String username = jwtUtil.getUsernameFromToken(token);
+            System.out.println("Username: " + username);
 
             // Ausgehende Anfragen holen
             List<FriendRequest> outgoingRequests = friendshipService.getOutgoingRequests(username);
@@ -264,6 +282,8 @@ public class FriendshipController {
                     "count", count
             ));
         } catch (Exception e) {
+            System.out.println("EXCEPTION: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Fehler beim Abrufen der ausgehenden Anfragen: " + e.getMessage());
         }
@@ -272,7 +292,7 @@ public class FriendshipController {
     @Operation(summary = "Storniert eine gesendete Freundschaftsanfrage")
     @DeleteMapping("/me/friend-requests/{requestId}")
     public ResponseEntity<?> cancelFriendRequest(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long requestId) {
         try {
             // JWT Token aus Header extrahieren
@@ -303,7 +323,7 @@ public class FriendshipController {
 
     @Operation(summary = "Holt eine Übersicht über Freunde und Anfragen")
     @GetMapping("/me/friendship-overview")
-    public ResponseEntity<?> getFriendshipOverview(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getFriendshipOverview(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -332,7 +352,7 @@ public class FriendshipController {
 
     @Operation(summary = "Holt alle ausstehenden Freundschaftsanfragen (eingehend und ausgehend)")
     @GetMapping("/me/friend-requests/all")
-    public ResponseEntity<?> getAllPendingRequests(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getAllPendingRequests(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
