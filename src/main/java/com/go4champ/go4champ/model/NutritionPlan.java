@@ -1,5 +1,6 @@
 package com.go4champ.go4champ.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ public class NutritionPlan {
     private LocalDate date;
 
     @ManyToOne
+    @JsonIgnore
     private User user;
 
     @OneToMany(mappedBy = "nutritionPlan", cascade = CascadeType.ALL)

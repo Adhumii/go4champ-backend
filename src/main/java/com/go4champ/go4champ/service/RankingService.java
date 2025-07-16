@@ -1,5 +1,6 @@
 package com.go4champ.go4champ.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.go4champ.go4champ.dto.*;
 import com.go4champ.go4champ.model.User;
 import com.go4champ.go4champ.model.Training;
@@ -727,6 +728,7 @@ public class RankingService {
     }
 
     private static class FriendTrainingInfo {
+        @JsonIgnore
         User user;
         long monthlyTrainings;
 
@@ -737,6 +739,8 @@ public class RankingService {
     }
 
     private static class FriendStreakInfo {
+        @JsonIgnore
+
         User user;
         int currentStreak;
 
@@ -747,6 +751,8 @@ public class RankingService {
     }
 
     private static class UserChallengeInfo {
+        @JsonIgnore
+
         User user;
         long wonChallenges;
 

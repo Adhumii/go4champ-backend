@@ -1,5 +1,6 @@
 package com.go4champ.go4champ.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -11,11 +12,13 @@ public class FriendRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "sender_username", nullable = false)
     private User sender;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "receiver_username", nullable = false)
     private User receiver;
 
