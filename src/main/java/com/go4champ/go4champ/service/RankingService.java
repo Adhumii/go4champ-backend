@@ -446,9 +446,12 @@ public class RankingService {
     }
 
     // =============================================================================
-    // FRIEND RANKINGS
+    // FRIEND RANKINGS - FIXED VERSION (NO LOB STREAM PROBLEM)
     // =============================================================================
 
+    /**
+     * FIXED: Friend Ranking für monatliche Trainings (ohne LOB stream Problem)
+     */
     public FriendRankingResponse getFriendMonthlyRanking(String username) {
         List<User> friends = friendshipService.getFriends(username);
         LocalDateTime now = LocalDateTime.now();
@@ -469,6 +472,7 @@ public class RankingService {
             User friend = friendInfo.user;
             long trainings = friendInfo.monthlyTrainings;
 
+            // FIXED: Erstelle RankingEntry nur mit einfachen Daten, keine User-Objekte
             RankingEntry entry = new RankingEntry(position, friend.getUsername(), friend.getName(),
                     trainings, trainings + " Trainings");
             entry.setAvatarId(friend.getAvatarID());
@@ -482,6 +486,7 @@ public class RankingService {
                 username, now.getYear(), now.getMonthValue());
         User currentUser = userRepository.findByUsername(username).orElse(null);
 
+        // FIXED: Erstelle currentUserEntry nur mit einfachen Daten
         RankingEntry currentUserEntry = new RankingEntry(0, username, currentUser.getName(),
                 userMonthlyTrainings, userMonthlyTrainings + " Trainings");
         currentUserEntry.setAvatarId(currentUser.getAvatarID());
@@ -503,7 +508,7 @@ public class RankingService {
     }
 
     /**
-     * FIXED: Friend Ranking für Streaks (ohne Infinite Loop)
+     * FIXED: Friend Ranking für Streaks (ohne LOB stream Problem)
      */
     public FriendRankingResponse getFriendStreakRanking(String username) {
         List<User> friends = friendshipService.getFriends(username);
@@ -535,6 +540,7 @@ public class RankingService {
             int streak = info.currentStreak;
 
             if (!user.getUsername().equals(username)) {
+                // FIXED: Erstelle RankingEntry nur mit einfachen Daten, keine User-Objekte
                 RankingEntry entry = new RankingEntry(position, user.getUsername(), user.getName(),
                         streak, streak + " Tage");
                 entry.setAvatarId(user.getAvatarID());
@@ -551,6 +557,7 @@ public class RankingService {
             position++;
         }
 
+        // FIXED: Erstelle currentUserEntry nur mit einfachen Daten
         RankingEntry currentUserEntry = new RankingEntry(currentUserPosition, username, currentUser.getName(),
                 userStreak, userStreak + " Tage");
         currentUserEntry.setAvatarId(currentUser.getAvatarID());
