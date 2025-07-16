@@ -1,6 +1,7 @@
 package com.go4champ.go4champ.model;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,10 +12,12 @@ public class Friendship {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user1_username", nullable = false)
     private User user1;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user2_username", nullable = false)
     private User user2;

@@ -19,6 +19,7 @@ public class TrainingsPlan {
 
     @ManyToOne
     @JsonIgnore
+    @JoinColumn(name = "user_username")
     private User user;
 
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})

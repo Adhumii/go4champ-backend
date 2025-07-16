@@ -25,6 +25,7 @@ public class Training {
 
     @ManyToOne
     @JsonIgnore
+    @JoinColumn(name = "user_username")
     private User user;
 
     private float difficulty;

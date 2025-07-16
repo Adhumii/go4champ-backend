@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 /**
@@ -20,10 +21,12 @@ public class Challenge {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "challenger_username", referencedColumnName = "username")
     private User challenger; // Der Herausforderer
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "challenged_username", referencedColumnName = "username")
     private User challenged; // Der Herausgeforderte
@@ -51,6 +54,7 @@ public class Challenge {
     private Double challengedResult; // Ergebnis des Herausgeforderten
 
     // Für FREE Type - Sieger-Bestimmung
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "winner_username", referencedColumnName = "username")
     private User winner; // Nur bei FREE Type relevant
@@ -138,4 +142,3 @@ public class Challenge {
         }
     }
 }
-
