@@ -1,6 +1,7 @@
 package com.go4champ.go4champ.model;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public class User {
     @Column(name = "equipment")
     private List<String> availableEquipment = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -49,6 +51,7 @@ public class User {
     private List<Training> trainings = new ArrayList<>();
 
     // NEU: TrainingsPlan-Beziehung
+    @JsonIgnore
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -151,8 +154,6 @@ public class User {
     public void setHeight(int height) {
         this.height = height;
     }
-
-
 
     public List<Training> getTrainings() {
         return trainings;
