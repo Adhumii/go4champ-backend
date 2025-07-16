@@ -576,28 +576,272 @@ public class RankingService {
     // RANKING OVERVIEW
     // =============================================================================
 
+    /**
+     * COMPLETELY FIXED: Ranking Overview (ohne LOB stream Problem)
+     */
     public RankingOverviewResponse getRankingOverview(String username) {
-        RankingOverviewResponse overview = new RankingOverviewResponse();
+        try {
+            RankingOverviewResponse overview = new RankingOverviewResponse();
 
-        overview.setCurrentUserStats(calculateUserStats(username));
+            // FIXED: Verwende nur calculateUserStats (OHNE Rankings, um Loops zu vermeiden)
+            UserStats userStats = calculateUserStats(username);
+            overview.setCurrentUserStats(userStats);
 
-        overview.setTopTrainingsAllTime(getGlobalTrainingRanking(username, 3).getEntries());
-        overview.setTopTrainingsThisMonth(getMonthlyTrainingRanking(username, 3).getEntries());
-        overview.setTopStreaks(getStreakRanking(username, 3).getEntries());
+            // FIXED: Verwende EINFACHE Ranking-Listen ohne komplexe Objekte
+            overview.setTopTrainingsAllTime(getSimpleGlobalRanking(username, 3));
+            overview.setTopTrainingsThisMonth(getSimpleMonthlyRanking(username, 3));
+            overview.setTopStreaks(getSimpleStreakRanking(username, 3));
 
-        overview.setTopChallengeWinners(getChallengeWinnerRanking(username, 3));
+            overview.setTopChallengeWinners(getSimpleChallengeRanking(username, 3));
 
-        overview.setFriendsThisMonth(getFriendMonthlyRanking(username));
-        overview.setFriendsStreak(getFriendStreakRanking(username));
+            // FIXED: Verwende die bereits funktionierenden Friend-Rankings
+            overview.setFriendsThisMonth(getFriendMonthlyRanking(username));
+            overview.setFriendsStreak(getFriendStreakRanking(username));
 
-        overview.setMyOverallPosition(getGlobalTrainingRanking(username, 1000).getCurrentUserPosition());
-        overview.setMyMonthlyPosition(getMonthlyTrainingRanking(username, 1000).getCurrentUserPosition());
-        overview.setMyStreakPosition(getStreakRanking(username, 1000).getCurrentUserPosition());
+            // FIXED: Berechne Positionen direkt (ohne komplexe Rankings)
+            overview.setMyOverallPosition(calculateDirectPosition(username, "TOTAL"));
+            overview.setMyMonthlyPosition(calculateDirectPosition(username, "MONTHLY"));
+            overview.setMyStreakPosition(calculateDirectPosition(username, "STREAK"));
 
-        overview.setRecentAchievements(generateAchievements(overview.getCurrentUserStats()));
-        overview.setUpcomingMilestones(generateMilestones(overview.getCurrentUserStats()));
+            // FIXED: Einfache Achievements ohne komplexe Berechnungen
+            overview.setRecentAchievements(generateSimpleAchievements(userStats));
+            overview.setUpcomingMilestones(generateSimpleMilestones(userStats));
 
-        return overview;
+            return overview;
+        } catch (Exception e) {
+            System.err.println("Error in getRankingOverview: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to fetch ranking overview: " + e.getMessage());
+        }
+    }
+
+    // NEUE HELPER-METHODEN (ohne LOB stream Probleme)
+
+    private List<RankingEntry> getSimpleGlobalRanking(String currentUsername, int limit) {
+        List<Object[]> results = trainingRepo.findUsersWithMostTrainings();
+        List<RankingEntry> entries = new ArrayList<>();
+
+        int position = 1;
+        for (Object[] result : results) {
+            if (position > limit) break;
+
+            String username = (String) result[0];
+            Long trainingCount = (Long) result[1];
+
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user == null) continue;
+
+            RankingEntry entry = new RankingEntry(position, username, user.getName(),
+                    trainingCount, trainingCount + " Trainings");
+            entry.setAvatarId(user.getAvatarID());
+            entry.setBadge(getBadgeForPosition(position));
+            entry.setCurrentUser(username.equals(currentUsername));
+
+            entries.add(entry);
+            position++;
+        }
+
+        return entries;
+    }
+
+    private List<RankingEntry> getSimpleMonthlyRanking(String currentUsername, int limit) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Object[]> results = trainingRepo.findUsersWithMostTrainingsThisMonth(
+                now.getYear(), now.getMonthValue());
+        List<RankingEntry> entries = new ArrayList<>();
+
+        int position = 1;
+        for (Object[] result : results) {
+            if (position > limit) break;
+
+            String username = (String) result[0];
+            Long trainingCount = (Long) result[1];
+
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user == null) continue;
+
+            RankingEntry entry = new RankingEntry(position, username, user.getName(),
+                    trainingCount, trainingCount + " Trainings");
+            entry.setAvatarId(user.getAvatarID());
+            entry.setBadge(getBadgeForPosition(position));
+            entry.setCurrentUser(username.equals(currentUsername));
+
+            entries.add(entry);
+            position++;
+        }
+
+        return entries;
+    }
+
+    private List<RankingEntry> getSimpleStreakRanking(String currentUsername, int limit) {
+        List<User> allUsers = userRepository.findAll();
+        List<SimpleUserStreak> userStreaks = new ArrayList<>();
+
+        for (User user : allUsers) {
+            int streak = calculateUserStreak(user.getUsername());
+            userStreaks.add(new SimpleUserStreak(user.getUsername(), user.getName(),
+                    user.getAvatarID(), streak));
+        }
+
+        userStreaks.sort((a, b) -> Integer.compare(b.streak, a.streak));
+
+        List<RankingEntry> entries = new ArrayList<>();
+        int position = 1;
+
+        for (SimpleUserStreak userStreak : userStreaks) {
+            if (position > limit) break;
+
+            RankingEntry entry = new RankingEntry(position, userStreak.username, userStreak.name,
+                    userStreak.streak, userStreak.streak + " Tage");
+            entry.setAvatarId(userStreak.avatarId);
+            entry.setBadge(getStreakBadge(userStreak.streak));
+            entry.setCurrentUser(userStreak.username.equals(currentUsername));
+
+            entries.add(entry);
+            position++;
+        }
+
+        return entries;
+    }
+
+    private List<RankingEntry> getSimpleChallengeRanking(String currentUsername, int limit) {
+        List<User> allUsers = userRepository.findAll();
+        List<SimpleChallengeWinner> challengeWinners = new ArrayList<>();
+
+        for (User user : allUsers) {
+            long wonChallenges = challengeRepository.countWonChallenges(user.getUsername());
+            if (wonChallenges > 0) {
+                challengeWinners.add(new SimpleChallengeWinner(user.getUsername(),
+                        user.getName(), user.getAvatarID(), wonChallenges));
+            }
+        }
+
+        challengeWinners.sort((a, b) -> Long.compare(b.wonChallenges, a.wonChallenges));
+
+        List<RankingEntry> entries = new ArrayList<>();
+        int position = 1;
+
+        for (SimpleChallengeWinner winner : challengeWinners) {
+            if (position > limit) break;
+
+            RankingEntry entry = new RankingEntry(position, winner.username, winner.name,
+                    winner.wonChallenges, winner.wonChallenges + " Siege");
+            entry.setAvatarId(winner.avatarId);
+            entry.setBadge(getBadgeForPosition(position));
+            entry.setCurrentUser(winner.username.equals(currentUsername));
+
+            entries.add(entry);
+            position++;
+        }
+
+        return entries;
+    }
+
+    private int calculateDirectPosition(String username, String type) {
+        switch (type) {
+            case "TOTAL":
+                List<Object[]> totalResults = trainingRepo.findUsersWithMostTrainings();
+                for (int i = 0; i < totalResults.size(); i++) {
+                    if (totalResults.get(i)[0].equals(username)) {
+                        return i + 1;
+                    }
+                }
+                break;
+
+            case "MONTHLY":
+                LocalDateTime now = LocalDateTime.now();
+                long userMonthly = trainingRepo.countByUsernameForMonth(
+                        username, now.getYear(), now.getMonthValue());
+                List<Object[]> monthlyResults = trainingRepo.findUsersWithMostTrainingsThisMonth(
+                        now.getYear(), now.getMonthValue());
+                for (int i = 0; i < monthlyResults.size(); i++) {
+                    if (monthlyResults.get(i)[0].equals(username)) {
+                        return i + 1;
+                    }
+                }
+                break;
+
+            case "STREAK":
+                int userStreak = calculateUserStreak(username);
+                List<User> allUsers = userRepository.findAll();
+                int position = 1;
+                for (User user : allUsers) {
+                    if (!user.getUsername().equals(username)) {
+                        int otherStreak = calculateUserStreak(user.getUsername());
+                        if (otherStreak > userStreak) {
+                            position++;
+                        }
+                    }
+                }
+                return position;
+        }
+        return 1;
+    }
+
+    private List<String> generateSimpleAchievements(UserStats stats) {
+        List<String> achievements = new ArrayList<>();
+
+        if (stats.getCurrentStreak() >= 7) {
+            achievements.add("🔥 7-Tage-Streak erreicht!");
+        }
+        if (stats.getTotalTrainings() >= 50) {
+            achievements.add("💪 50 Trainings absolviert!");
+        }
+        if (stats.getMonthlyTrainings() >= 20) {
+            achievements.add("⚡ 20 Trainings diesen Monat!");
+        }
+
+        if (achievements.isEmpty()) {
+            achievements.add("🎯 Ranking-System aktiv!");
+        }
+
+        return achievements;
+    }
+
+    private List<String> generateSimpleMilestones(UserStats stats) {
+        List<String> milestones = new ArrayList<>();
+
+        if (stats.getCurrentStreak() < 7) {
+            milestones.add("Noch " + (7 - stats.getCurrentStreak()) + " Tage bis zur 7-Tage-Streak");
+        }
+        if (stats.getTotalTrainings() < 100) {
+            milestones.add("Noch " + (100 - stats.getTotalTrainings()) + " Trainings bis zu 100 Trainings");
+        }
+
+        if (milestones.isEmpty()) {
+            milestones.add("Freunde hinzufügen für mehr Rankings!");
+        }
+
+        return milestones;
+    }
+
+    // Neue einfache Datenklassen
+    private static class SimpleUserStreak {
+        public final String username;
+        public final String name;
+        public final String avatarId;
+        public final int streak;
+
+        public SimpleUserStreak(String username, String name, String avatarId, int streak) {
+            this.username = username;
+            this.name = name;
+            this.avatarId = avatarId;
+            this.streak = streak;
+        }
+    }
+
+    private static class SimpleChallengeWinner {
+        public final String username;
+        public final String name;
+        public final String avatarId;
+        public final long wonChallenges;
+
+        public SimpleChallengeWinner(String username, String name, String avatarId, long wonChallenges) {
+            this.username = username;
+            this.name = name;
+            this.avatarId = avatarId;
+            this.wonChallenges = wonChallenges;
+        }
     }
 
     // =============================================================================

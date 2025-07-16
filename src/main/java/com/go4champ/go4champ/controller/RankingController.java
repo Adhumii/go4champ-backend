@@ -27,10 +27,15 @@ public class RankingController {
     public ResponseEntity<?> getRankingOverview(@RequestHeader("Authorization") String token) {
         try {
             String username = jwtTokenUtil.getUsernameFromToken(token.replace("Bearer ", ""));
+            
+            // FIXED: Verwende die sichere Methode aus RankingService
             RankingOverviewResponse overview = rankingService.getRankingOverview(username);
+            
             return ResponseEntity.ok(overview);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            System.err.println("ERROR in getRankingOverview: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "Unable to access lob stream"));
         }
     }
 
@@ -117,10 +122,15 @@ public class RankingController {
     public ResponseEntity<?> getFriendStreakRanking(@RequestHeader("Authorization") String token) {
         try {
             String username = jwtTokenUtil.getUsernameFromToken(token.replace("Bearer ", ""));
-            FriendRankingResponse ranking = rankingService.getFriendStreakRanking(username);
-            return ResponseEntity.ok(ranking);
+            
+            // FIXED: Verwende die sichere Methode
+            FriendRankingResponse response = rankingService.getFriendStreakRanking(username);
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            System.err.println("ERROR in getFriendStreakRanking: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "Unable to access lob stream"));
         }
     }
 

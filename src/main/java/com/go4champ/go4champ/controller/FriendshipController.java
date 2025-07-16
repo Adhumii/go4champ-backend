@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @Tag(name = "FriendshipController", description = "API für Freundschaften und Freundschaftsanfragen")
 @RestController
@@ -161,29 +163,33 @@ public class FriendshipController {
     @GetMapping("/me/friend-requests/incoming")
     public ResponseEntity<?> getIncomingFriendRequests(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            System.out.println("=== DEBUG INCOMING REQUESTS ===");
-            System.out.println("Auth Header: " + authHeader);
-            System.out.println("Auth Header is null: " + (authHeader == null));
-
-            // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                System.out.println("ERROR: Kein gültiger Token gefunden");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kein gültiger Token");
             }
 
             String token = authHeader.substring(7);
-            System.out.println("Token vorhanden: " + !token.isEmpty());
-
             String username = jwtUtil.getUsernameFromToken(token);
-            System.out.println("Username: " + username);
 
             // Eingehende Anfragen holen
             List<FriendRequest> incomingRequests = friendshipService.getIncomingRequests(username);
-            long count = friendshipService.getIncomingRequestCount(username);
+            
+            // FIXED: Konvertiere zu DTOs (keine User-Objekte)
+            List<Map<String, Object>> requestDTOs = incomingRequests.stream()
+                .map(request -> {
+                    Map<String, Object> dto = new HashMap<>();
+                    dto.put("id", request.getId());
+                    dto.put("senderUsername", request.getSender().getUsername());
+                    dto.put("senderName", request.getSender().getName());
+                    dto.put("message", request.getMessage() != null ? request.getMessage() : "");
+                    dto.put("status", request.getStatus().toString());
+                    dto.put("createdAt", request.getCreatedAt().toString());
+                    return dto;
+                })
+                .collect(Collectors.toList());
 
             return ResponseEntity.ok(Map.of(
-                    "requests", incomingRequests,
-                    "count", count
+                    "requests", requestDTOs,
+                    "count", requestDTOs.size()
             ));
         } catch (Exception e) {
             System.out.println("EXCEPTION: " + e.getMessage());
@@ -257,29 +263,33 @@ public class FriendshipController {
     @GetMapping("/me/friend-requests/outgoing")
     public ResponseEntity<?> getOutgoingFriendRequests(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            System.out.println("=== DEBUG OUTGOING REQUESTS ===");
-            System.out.println("Auth Header: " + authHeader);
-            System.out.println("Auth Header is null: " + (authHeader == null));
-
-            // JWT Token aus Header extrahieren
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                System.out.println("ERROR: Kein gültiger Token gefunden");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kein gültiger Token");
             }
 
             String token = authHeader.substring(7);
-            System.out.println("Token vorhanden: " + !token.isEmpty());
-
             String username = jwtUtil.getUsernameFromToken(token);
-            System.out.println("Username: " + username);
 
             // Ausgehende Anfragen holen
             List<FriendRequest> outgoingRequests = friendshipService.getOutgoingRequests(username);
-            long count = friendshipService.getOutgoingRequestCount(username);
+            
+            // FIXED: Konvertiere zu DTOs (keine User-Objekte)
+            List<Map<String, Object>> requestDTOs = outgoingRequests.stream()
+                .map(request -> {
+                    Map<String, Object> dto = new HashMap<>();
+                    dto.put("id", request.getId());
+                    dto.put("receiverUsername", request.getReceiver().getUsername());
+                    dto.put("receiverName", request.getReceiver().getName());
+                    dto.put("message", request.getMessage() != null ? request.getMessage() : "");
+                    dto.put("status", request.getStatus().toString());
+                    dto.put("createdAt", request.getCreatedAt().toString());
+                    return dto;
+                })
+                .collect(Collectors.toList());
 
             return ResponseEntity.ok(Map.of(
-                    "requests", outgoingRequests,
-                    "count", count
+                    "requests", requestDTOs,
+                    "count", requestDTOs.size()
             ));
         } catch (Exception e) {
             System.out.println("EXCEPTION: " + e.getMessage());
